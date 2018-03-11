@@ -34,8 +34,19 @@ app.get('/', (req, res) => {
       const out = document.getElementById('out');
       io().on('message', ({ time, query, body}) => {
         const autoscroll = out.scrollTop + out.clientHeight >= out.scrollHeight;
-        const { name, ...rest } = query;
-        out.value += time + ' ' + name + '\\r\\n';
+        const { app, name, ...rest } = query;
+        out.value += time;
+        if (app) {
+          if (name) {
+            out.value += ' ' + app + '::' + name + '\\r\\n'; 
+          } else {
+            out.value += ' ' + app + '\\r\\n';
+          }
+        } else if (name) {
+          out.value += ' ' + name + '\\r\\n';
+        } else {
+          out.value += '\\r\\n';
+        }
         if (Object.keys(rest).length > 0) {
           out.value += JSON.stringify(rest, null, 2) + '\\r\\n';
         }
@@ -70,7 +81,7 @@ app.post('/', (req, res) => {
 
     io.emit('message', {
       time: time.format('HH:mm:ss.SSSSS'),
-      query: req.query || {},
+      query: { app: 'logview', ...req.query },
       body: body.toString('utf8')
     });
 
