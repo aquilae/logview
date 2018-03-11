@@ -55,14 +55,15 @@ app.get('/', (req, res) => {
       });
       
       window.post = function(body, query) {
-        let url = '/';
-        if (query) {
-          url += '?' + Object.keys(query)
-            .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(query[key]))
-            .join('&');
-        }
+        query = { app: 'logview', ...query };
+        const url = '/?' + Object.keys(query).map(
+          key => enc(key) + '=' + enc(query[key])).join('&');
         fetch(url, { method: 'POST', body: body });
       };
+      
+      function enc(x) {
+        return encodeURIComponent(x);
+      }
     </script>
   </body>
 </html>
@@ -81,7 +82,7 @@ app.post('/', (req, res) => {
 
     io.emit('message', {
       time: time.format('HH:mm:ss.SSSSS'),
-      query: { app: 'logview', ...req.query },
+      query: req.query || {},
       body: body.toString('utf8')
     });
 
