@@ -1,0 +1,26 @@
+{
+  "name": "logview",
+  "version": "0.0.0",
+  "private": false,
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/aquilae/logview.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/aquilae/logview/issues"
+  },
+  "homepage": "https://github.com/aquilae/logview#readme",
+  "dependencies": {
+    "express": "^4.16.2",
+    "moment": "^2.21.0",
+    "socket.io": "^2.0.4"
+  }
+}
