@@ -1,5 +1,9 @@
+const fs = require('fs');
 const http = require('http');
+const path = require('path');
+
 const express = require('express');
+const formidable = require('formidable');
 const moment = require('moment');
 const socketIO = require('socket.io');
 
@@ -91,6 +95,48 @@ app.post('/', (req, res) => {
     });
 
     res.end('OK');
+  });
+});
+
+app.get('/file/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'files', req.path.substr(6)));
+});
+
+app.post('/file', (req, res) => {
+  console.log('incoming file.');
+
+  const time = moment.utc().add(3, 'hours');
+
+  const form = new formidable.IncomingForm();
+
+  form.parse(req, function(err, fields, files) {
+    const filenames = [];
+
+    Promise
+      .all(
+        Object.keys(files).map(
+          (key) => new Promise((resolve, reject) => {
+            const file = files[key];
+            filenames.push(file.name);
+            const readStream = fs.createReadStream(file.path);
+            const writeStream = fs.createWriteStream(path.join('files', file.name));
+            readStream.on('error', reject);
+            writeStream.on('error', reject);
+            writeStream.on('close', resolve);
+            readStream.pipe(writeStream);
+          })))
+      .then(() => {
+        io.emit('message', {
+          time: time.format('HH:mm:ss.SSSSS'),
+          query: fields || {},
+          body: 'uploaded files:' + filenames.map(x => '\r\n' + x),
+        });
+
+        res.writeHead(200, {
+          'Content-Type': 'text/plain'
+        });
+        res.end('OK');
+      });
   });
 });
 
