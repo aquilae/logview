@@ -75,7 +75,7 @@ app.get('/', (req, res) => {
 });
 
 app.post('/', (req, res) => {
-  console.log('incoming log message.');
+  console.log('incoming log message.', req.query);
 
   const time = moment.utc().add(3, 'hours');
   const chunks = [];
@@ -84,9 +84,28 @@ app.post('/', (req, res) => {
   req.on('end', () => {
     const body = Buffer.concat(chunks);
 
+    const query = req.query || {};
+    let str = time;
+    if (query.app) {
+      if (query.name) {
+        str += ' ' + query.app + '::' + query.name + '\r\n';
+      } else {
+        str += ' ' + query.app + '\r\n';
+      }
+    } else if (query.name) {
+      str += ' ' + query.name + '\r\n';
+    } else {
+      str += '\r\n';
+    }
+    if (Object.keys(query).filter(x => x !== 'app' && x !== 'name').length > 0) {
+      str += JSON.stringify(query, null, 2) + '\r\n';
+    }
+    str += body.toString('utf8') + '\r\n\r\n';
+    console.log(str);
+
     io.emit('message', {
       time: time.format('HH:mm:ss.SSSSS'),
-      query: req.query || {},
+      query: query,
       body: body.toString('utf8')
     });
 
