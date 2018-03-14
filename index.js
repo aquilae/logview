@@ -125,18 +125,27 @@ app.post('/file', (req, res) => {
             writeStream.on('close', resolve);
             readStream.pipe(writeStream);
           })))
-      .then(() => {
-        io.emit('message', {
-          time: time.format('HH:mm:ss.SSSSS'),
-          query: fields || {},
-          body: 'uploaded files:' + filenames.map(x => '\r\n' + x),
-        });
+      .then(
+        () => {
+          io.emit('message', {
+            time: time.format('HH:mm:ss.SSSSS'),
+            query: fields || {},
+            body: 'uploaded files:' + filenames.map(x => '\r\n' + x),
+          });
 
-        res.writeHead(200, {
-          'Content-Type': 'text/plain'
+          res.writeHead(200, {
+            'Content-Type': 'text/plain'
+          });
+          res.end('OK');
+        },
+        (err) => {
+          console.error(err);
+          io.emit('message', {
+            time: moment.utc().add(3, 'hours').format('HH:mm:ss.SSSSS'),
+            query: { app: 'logview', name: '/file upload error' },
+            body: err.toString()
+          });
         });
-        res.end('OK');
-      });
   });
 });
 
