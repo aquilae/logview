@@ -122,50 +122,78 @@ app.get('/file/*', (req, res) => {
 });
 
 app.post('/file', (req, res) => {
-  console.log('incoming file.');
+  console.log('incoming file.', req.query);
 
-  const time = moment.utc().add(3, 'hours');
+  try {
+    const time = moment.utc().add(3, 'hours');
 
-  const form = new formidable.IncomingForm();
+    const form = new formidable.IncomingForm();
 
-  form.parse(req, function(err, fields, files) {
-    const filenames = [];
+    form.parse(req, function(err, fields, files) {
+      const filenames = [];
 
-    Promise
-      .all(
-        Object.keys(files).map(
-          (key) => new Promise((resolve, reject) => {
-            const file = files[key];
-            filenames.push(file.name);
-            const readStream = fs.createReadStream(file.path);
-            const writeStream = fs.createWriteStream(path.join('files', file.name));
-            readStream.on('error', reject);
-            writeStream.on('error', reject);
-            writeStream.on('close', resolve);
-            readStream.pipe(writeStream);
-          })))
-      .then(
-        () => {
-          io.emit('message', {
-            time: time.format('HH:mm:ss.SSSSS'),
-            query: fields || {},
-            body: 'uploaded files:' + filenames.map(x => '\r\n' + x),
+      Promise
+        .all(
+          Object.keys(files).map(
+            (key) => new Promise((resolve, reject) => {
+              const file = files[key];
+              filenames.push(file.name);
+              const readStream = fs.createReadStream(file.path);
+              const writeStream = fs.createWriteStream(path.join('files', file.name));
+              readStream.on('error', reject);
+              writeStream.on('error', reject);
+              writeStream.on('close', resolve);
+              readStream.pipe(writeStream);
+            })))
+        .then(
+          () => {
+            const query = req.query || {};
+            let str = time;
+            if (query.app) {
+              if (query.name) {
+                str += ' ' + query.app + '::' + query.name + '\r\n';
+              } else {
+                str += ' ' + query.app + '\r\n';
+              }
+            } else if (query.name) {
+              str += ' ' + query.name + '\r\n';
+            } else {
+              str += '\r\n';
+            }
+            if (Object.keys(query).filter(x => x !== 'app' && x !== 'name').length > 0) {
+              str += JSON.stringify(query, null, 2) + '\r\n';
+            }
+            str += 'uploaded files:' + filenames.map(x => '\r\n' + x) + '\r\n\r\n';
+            console.log(str);
+
+            io.emit('message', {
+              time: time.format('HH:mm:ss.SSSSS'),
+              query: fields || {},
+              body: 'uploaded files:' + filenames.map(x => '\r\n' + x),
+            });
+
+            res.writeHead(200, {
+              'Content-Type': 'text/plain'
+            });
+            res.end('OK');
+          },
+          (err) => {
+            console.error(err);
+            io.emit('message', {
+              time: moment.utc().add(3, 'hours').format('HH:mm:ss.SSSSS'),
+              query: { app: 'logview', name: '/file upload error' },
+              body: err.toString()
+            });
           });
-
-          res.writeHead(200, {
-            'Content-Type': 'text/plain'
-          });
-          res.end('OK');
-        },
-        (err) => {
-          console.error(err);
-          io.emit('message', {
-            time: moment.utc().add(3, 'hours').format('HH:mm:ss.SSSSS'),
-            query: { app: 'logview', name: '/file upload error' },
-            body: err.toString()
-          });
-        });
-  });
+    });
+  } catch (exc) {
+    console.error(exc);
+    io.emit('message', {
+      time: moment.utc().add(3, 'hours').format('HH:mm:ss.SSSSS'),
+      query: { app: 'logview', name: '/file upload error' },
+      body: exc.toString()
+    });
+  }
 });
 
 server.listen(port, () => {
